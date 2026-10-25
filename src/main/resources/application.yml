@@ -1,0 +1,147 @@
+mybatis:
+  mapper-locations: classpath*:/Mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+spring:
+  servlet:
+    multipart:
+      #如果文件大小超过10MB，则写入磁盘，否则进入内存 。如果并发量大，最好的方式是直接写入MinIO
+      file-size-threshold: 10MB
+      #单个文件最大500MB
+      max-file-size: 500MB
+      #一次请求最大处理500MB
+      max-request-size: 500MB
+  config:
+    import: "optional:file:./.env[.properties]"
+  application:
+    name: learning-agent
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    #接口文档访问路径
+    #Swagger UI:  http://localhost:8080/swagger-ui/index.html
+    #OpenAPI JSON: http://localhost:8080/v3/api-docs
+    #OpenAPI YAML: http://localhost:8080/v3/api-docs.yaml
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: false
+  api-docs:
+    enabled: false
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-millis: ${JWT_EXPIRATION_MILLIS}
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+  # 认证信息必须由环境变量或本地 .env 提供，避免误用默认管理员账号。
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
+  bucket-name: ${MINIO_BUCKET:document-bucket}
+
+
+snowflake:
+  # 本地单实例可以使用 0；
+  #TODO  多实例部署时，每个同时运行的实例必须配置不同的值。
+  worker-id: ${SNOWFLAKE_WORKER_ID:0}
+
+aliyun:
+  debug:
+    timeout-second: ${ALIYUN_DEBUG_TIMEOUT_SECOND:10}
+  embedding:
+    # API Key 通过环境变量或 .env 注入，不要写入源码。
+    api-key: ${ALIYUN_EMBEDDING_API_KEY:}
+    base-url: ${ALIYUN_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings}
+    model: ${ALIYUN_EMBEDDING_MODEL:qwen3.7-text-embedding}
+    dimensions: ${ALIYUN_EMBEDDING_DIMENSIONS:1536}
+    # 单次请求最多发送的文本数量，qwen3.7 系列当前建议不超过 20
+    max-batch-size: ${ALIYUN_EMBEDDING_MAX_BATCH_SIZE:20}
+    # 单实例同时调用阿里云 Embedding 接口的最大请求数
+    max-concurrency: ${ALIYUN_EMBEDDING_MAX_CONCURRENCY:2}
+    # 等待并发许可的最长时间，单位秒
+    acquire-timeout-seconds: ${ALIYUN_EMBEDDING_ACQUIRE_TIMEOUT_SECONDS:30}
+    # 建立 TCP 和 TLS 连接的最长等待时间，单位秒
+    connect-timeout-seconds: ${ALIYUN_EMBEDDING_CONNECT_TIMEOUT_SECONDS:5}
+    # 连接成功后等待响应数据的最长时间，单位秒
+    read-timeout-seconds: ${ALIYUN_EMBEDDING_READ_TIMEOUT_SECONDS:60}
+  llm:
+    # 优先读取聊天模型专用 Key；没有配置时回退到 Embedding Key，便于同一阿里云账号复用凭证。
+    # API Key 只存放在环境变量或本地 .env 中，不能直接写进这个会提交到 Git 的配置文件。
+    api-key: ${ALIYUN_LLM_API_KEY:${ALIYUN_EMBEDDING_API_KEY:}}
+    # OpenAI 兼容的聊天完成接口完整地址，测试时也可以通过环境变量替换成本地地址。
+    base-url: ${ALIYUN_LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}
+    # 默认模型使用稳定别名；更换模型只需要修改环境变量，不需要重新修改 Java 客户端。
+    model: ${ALIYUN_LLM_MODEL:qwen3.7-flash-2026-07-15}
+    # 分别限制建立连接和等待模型生成结果的最长时间，避免请求线程无限期阻塞。
+    # 主模型先给 90 秒，优先减少复杂教学回答已经等待较久却因读取超时失败的情况。
+    connect-timeout-seconds: ${ALIYUN_LLM_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${ALIYUN_LLM_READ_TIMEOUT_SECONDS:90}
+
+harness:
+  answer-review:
+    # 审查模型格式错误时最多再请求一次，只修复 JSON，不重复执行业务工具。
+    max-attempts: ${HARNESS_ANSWER_REVIEW_MAX_ATTEMPTS:2}
+  tool-loop:
+    # 单次逻辑任务最多连续请求十五批工具；审批恢复继续消耗同一预算。
+    # 提高上限只能减少复杂学习任务被过早截断，不能代替工具幂等、状态校验和超时控制。
+    max-rounds: ${HARNESS_TOOL_LOOP_MAX_ROUNDS:15}
+  skills:
+    # 控制单次任务激活的技能规模；重复读取不增加数量，暂停恢复沿用同一集合。
+    max-active-skills: ${HARNESS_SKILL_MAX_ACTIVE_SKILLS:3}
+    # 只统计活跃正文字符，整个请求仍要经过 context 的安全水位检查。
+    max-active-characters: ${HARNESS_SKILL_MAX_ACTIVE_CHARACTERS:12000}
+  llm:
+    # TODO 后续按真实运行数据增加 Agent Run 总截止时间；现在只限制单次模型 HTTP 读取。
+    retry:
+      # 最大尝试次数包含第一次请求；3 表示首次请求失败后最多再重试两次。
+      max-attempts: ${HARNESS_LLM_MAX_ATTEMPTS:3}
+      # 第一次重试前等待 200 毫秒，后续使用指数退避。
+      initial-backoff-millis: ${HARNESS_LLM_INITIAL_BACKOFF_MILLIS:200}
+      # 单次退避等待最多 2 秒，避免限流时线程长时间占用。
+      max-backoff-millis: ${HARNESS_LLM_MAX_BACKOFF_MILLIS:2000}
+  context:
+    # 当前测试阶段用字符数近似上下文大小，不等于模型厂商统计的真实 token 数。
+    max-context-characters: ${HARNESS_MAX_CONTEXT_CHARACTERS:100000}
+    # 工具结果正文超过 500 个字符时，只压缩发送给模型的工作副本。
+    max-tool-result-characters: ${HARNESS_MAX_TOOL_RESULT_CHARACTERS:3000}
+    # 单次 Agent Loop 最多执行两次原始工具结果恢复，避免模型反复读取。
+    max-recovery-calls-per-run: ${HARNESS_MAX_RECOVERY_CALLS_PER_RUN:5}
+    # 所有成功恢复结果的累计字符上限。
+    max-recovery-characters-per-run: ${HARNESS_MAX_RECOVERY_CHARACTERS_PER_RUN:1000}
+    # 所有模型请求最多使用 85% 上下文，给模型输出和后续控制消息预留空间。
+    safe-context-ratio: ${HARNESS_SAFE_CONTEXT_RATIO:0.85}
+    # 触发压缩后尽量回落到 80%；全部工具压缩后仍低于 95% 时仍允许请求继续。
+    compression-target-ratio: ${HARNESS_COMPRESSION_TARGET_RATIO:0.80}
+  memory:
+    extraction:
+      retry:
+        # 记忆提取格式错误时最多请求两次，次数包含第一次请求。
+        max-attempts: ${HARNESS_MEMORY_EXTRACTION_MAX_ATTEMPTS:2}
+    consolidation:
+      # 入队前先检查阈值；达到条件后在后台生成待审批方案，不等待模型整理完成。
+      enabled: ${HARNESS_MEMORY_CONSOLIDATION_ENABLED:true}
+      # 两类记忆分别累计实际变更；首次把已有有效记录数纳入计数。
+      change-threshold: ${HARNESS_MEMORY_CONSOLIDATION_THRESHOLD:20}
+      # 本阶段超出上限就保留原记录和进度，不截断正文后做合并。
+      max-memories: ${HARNESS_MEMORY_CONSOLIDATION_MAX_MEMORIES:100}
+      max-input-characters: ${HARNESS_MEMORY_CONSOLIDATION_MAX_INPUT_CHARACTERS:40000}
+      # 整理输出格式或引用有误时最多请求两次，网络重试复用上面的配置。
+      max-attempts: ${HARNESS_MEMORY_CONSOLIDATION_MAX_ATTEMPTS:2}
+milvus:
+  # 默认开启；本地只验证 Harness HTTP 链路时可以用 MILVUS_ENABLED=false 跳过初始化。
+  enabled: ${MILVUS_ENABLED:true}
+  host: ${MILVUS_HOST:127.0.0.1}
+  port: ${MILVUS_PORT:19530}
+  timeout: ${MILVUS_TIMEOUT:10000}
+
+approval:
+  websocket:
+    # 生产环境填写实际前端来源；HTTPS 页面对应使用 WSS 连接。
+    allowed-origins: ${APPROVAL_WEBSOCKET_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+document:
+  task:
+    scheduler:
+      # 解析任务提交间隔，单位毫秒
+      fixed-delay-ms: ${DOCUMENT_TASK_SCHEDULER_FIXED_DELAY_MS:1000}
