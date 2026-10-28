@@ -14,7 +14,7 @@ spring:
   config:
     import: "optional:file:./.env[.properties]"
   application:
-    name: learning-agent
+    name: learning_assistant
   datasource:
     url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_USER}

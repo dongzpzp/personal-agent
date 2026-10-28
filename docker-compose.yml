@@ -1,6 +1,6 @@
 # 只运行中间件；不包含前后端服务，不执行 Dockerfile，也没有 build。
-# Compose 和本机 Spring Boot 共用 learning-assistant 目录内的 .env。
-name: learning-assistant-infra
+# Compose 和本机 Spring Boot 共用 learning_assistant 目录内的 .env。
+name: learning_assistant-infra
 
 services:
   mysql:

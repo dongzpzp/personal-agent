@@ -634,6 +634,7 @@ UPDATE documents
 SET upload_request_id = CONCAT('legacy-', id)
 WHERE upload_request_id IS NULL;
 
+-- 建立唯一索引 user_id + upload_request_id
 ALTER TABLE documents
     MODIFY COLUMN upload_request_id VARCHAR(64) NOT NULL
         COMMENT '上传请求幂等键',

@@ -1,0 +1,77 @@
+package com.dzp.learning_assistant.controller;
+
+import com.dzp.learning_assistant.model.dto.KnowledgePointsDTO;
+import com.dzp.learning_assistant.model.vo.KnowledgePointsVO;
+import com.dzp.learning_assistant.model.vo.Result;
+import com.dzp.learning_assistant.service.KnowledgePointsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/knowledgePoints")
+@RequiredArgsConstructor
+@Validated
+@Tag(name = "知识点接口")
+public class KnowledgePointsController {
+    private final KnowledgePointsService knowledgePointsService;
+
+    @PostMapping("/createKnowledgePoint")
+    @Operation(summary = "创建知识点")
+    public Result<List<KnowledgePointsVO>> createKnowledgePoint(
+            @Valid @RequestBody List<KnowledgePointsDTO> knowledgePointsDTOList) {
+        return Result.success(knowledgePointsService.createKnowledgePoint(knowledgePointsDTOList));
+    }
+
+    @GetMapping("/{ids}")
+    @Operation(summary = "根据 ID 查询知识点")
+    public Result<List<KnowledgePointsVO>> getKnowledgePointById(
+            @PathVariable List<@Positive(message = "知识点 ID 必须大于 0") Long> ids) {
+        return Result.success(knowledgePointsService.getKnowledgePointByIds(ids));
+    }
+
+    @GetMapping("/chapter/{chapterId}")
+    @Operation(summary = "查询章节下的知识点")
+    public Result<List<KnowledgePointsVO>> getKnowledgePointsByChapterId(
+            @Positive(message = "章节 ID 必须大于 0") @PathVariable Long chapterId) {
+        return Result.success(knowledgePointsService.getKnowledgePointsByChapterId(chapterId));
+    }
+
+    @PutMapping("/updateKnowledgePoints")
+    @Operation(summary = "更新知识点")
+    public Result<List<KnowledgePointsVO>> updateKnowledgePoint(@Valid @RequestBody List<KnowledgePointsDTO> knowledgePointsDTOList) {
+        return Result.success(knowledgePointsService.updateKnowledgePoint(knowledgePointsDTOList));
+    }
+
+    @DeleteMapping("/{ids}")
+    @Operation(summary = "删除知识点")
+    public Result<Void> deleteKnowledgePoint(
+            @PathVariable List<@Positive(message = "知识点 ID 必须大于 0") Long> ids) {
+        knowledgePointsService.deleteKnowledgePoint(ids);
+        return Result.success();
+    }
+
+
+    @GetMapping("/getPrerequisiteKnowledgePoints/{courseId}")
+    @Operation(summary = "获取课程 前置 知识点关系")
+    public Result<List<KnowledgePointsVO>> getCoursePrerequisiteRelations(
+            @Positive(message = "课程 ID 必须大于 0") @PathVariable Long courseId) {
+        // 调用知识点关系服务，根据课程 ID 获取 prerequisite 知识点关系。
+        return Result.success(knowledgePointsService.getPrerequisiteKnowledgePointsByCourseId(courseId));
+    }
+
+    @GetMapping("/getConfusableKnowledgePoints/{courseId}")
+    @Operation(summary = "获取课程 confusable 知识点关系")
+    public Result<List<KnowledgePointsVO>> getCourseConfusableRelations(
+            @Positive(message = "课程 ID 必须大于 0") @PathVariable Long courseId) {
+        // 调用知识点关系服务，根据课程 ID 获取 confusable 知识点关系。
+        return Result.success(knowledgePointsService.getConfusableKnowledgePointsByCourseId(courseId));
+    }
+}
+
